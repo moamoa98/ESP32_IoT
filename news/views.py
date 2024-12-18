@@ -5,7 +5,7 @@ import requests
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
-ESP32_IP='192.168.1.8'
+ESP32_IP='192.168.1'
 @csrf_exempt
 
 def get_temp_humidity(request):
