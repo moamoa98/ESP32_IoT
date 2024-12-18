@@ -17,6 +17,9 @@
         <link href="https://cdn.jquery.app/jqueryscripttop.css" rel="stylesheet" type="text/css">
         <link rel="stylesheet" type="text/css" src="{%static 'css/style.css' %}" >
         <script type="application/json" src="{%static 'js/script.js'%}"></script>
+        <script  src="https://code.jquery.com/jquery-1.11.1.min.js"></script>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/raphael/2.1.2/raphael-min.js"></script>
+        <script type="application/json" src="{%static 'js/kuma-gauge.jquery.js'%}"></script>
 
         {% comment %} <link rel="stylesheet" href="css/style.css">
         <script src="js/script.js"></script> {% endcomment %}
@@ -37,12 +40,9 @@
                     <div class="js-gauge js-gauge--1 gauge"></div>
                     <div class="js-gauge js-gauge--2 gauge"></div>
                     
-                    {% load static %}
-                    <script  src="https://code.jquery.com/jquery-1.11.1.min.js"></script>
-                    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/raphael/2.1.2/raphael-min.js"></script>
-                    <script type="application/json" src="{%static 'js/kuma-gauge.jquery.js'%}"></script>
 
-                    <script>
+
+                    <script type="application/json">
 
                         $('.js-gauge--1').kumaGauge({
                             value : Math.floor((Math.random() * 99) + 1)
