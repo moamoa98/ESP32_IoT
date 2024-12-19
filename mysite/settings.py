@@ -130,6 +130,9 @@ STATIC_URL = 'static/'
 STATIC_ROOT=os.path.join(BASE_DIR, "staticfiles")
 STATIC_DIRS = [os.path.join(BASE_DIR, "mysite\static")]
 
+THINGSPEAK_API_KEY = '850L5YHIZ5AIC93F'
+THINGSPEAK_CHANNEL_ID = '2790754' 
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
