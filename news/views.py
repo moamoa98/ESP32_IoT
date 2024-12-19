@@ -5,6 +5,8 @@ from django.views.decorators.csrf import csrf_exempt
 import requests
 from datetime import datetime
 import json
+import logging
+logger = logging.getLogger(__name__)
 
 # ESP32 và ThingSpeak configuration
 ESP32_IP = '118.69.234.7'
@@ -15,9 +17,7 @@ THINGSPEAK_BASE_URL = 'https://api.thingspeak.com'
 
 def get_thingspeak_data(field=None, results=1):
     """
-    Lấy dữ liệu từ ThingSpeak
-    field: số field cần lấy (1=temperature, 2=humidity)
-    results: số lượng kết quả muốn lấy
+    Lấy dữ liệu từ ThingSpeak với xử lý lỗi tốt hơn
     """
     try:
         params = {
@@ -30,52 +30,73 @@ def get_thingspeak_data(field=None, results=1):
         response = requests.get(
             f'{THINGSPEAK_BASE_URL}/channels/{THINGSPEAK_CHANNEL_ID}/feeds.json',
             params=params,
-            timeout=5
+            timeout=10  # Tăng timeout
         )
         
-        if response.status_code == 200:
-            return response.json()
+        response.raise_for_status()  # Raise exception for bad status codes
+        
+        data = response.json()
+        
+        if not data.get('feeds'):
+            logger.warning("No data received from ThingSpeak")
+            return None
+            
+        return data
+        
+    except requests.Timeout:
+        logger.error("ThingSpeak API timeout")
         return None
     except requests.RequestException as e:
-        print(f"ThingSpeak API error: {str(e)}")
+        logger.error(f"ThingSpeak API error: {str(e)}")
         return None
-
+    except (ValueError, KeyError) as e:
+        logger.error(f"Error parsing ThingSpeak data: {str(e)}")
+        return None
 @csrf_exempt
 def get_temp_humidity(request):
+    """Lấy dữ liệu nhiệt độ và độ ẩm mới nhất"""
     try:
-        # Lấy dữ liệu từ cả ESP32 và ThingSpeak
-        esp32_response = requests.get(f'http://{ESP32_IP}/temp-humidity', timeout=5)
         thingspeak_data = get_thingspeak_data(results=1)
         
-        response_data = {
+        if not thingspeak_data or not thingspeak_data.get('feeds'):
+            return JsonResponse({
+                'status': 'error',
+                'message': 'No data available from ThingSpeak'
+            }, status=404)
+        
+        latest_feed = thingspeak_data['feeds'][-1]
+        
+        # Validate data
+        temperature = latest_feed.get('field1')
+        humidity = latest_feed.get('field2')
+        
+        if temperature is None or humidity is None:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Invalid data format from ThingSpeak'
+            }, status=500)
+            
+        try:
+            temperature = round(float(temperature), 2)
+            humidity = round(float(humidity), 2)
+        except (ValueError, TypeError):
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Invalid numeric data from ThingSpeak'
+            }, status=500)
+        
+        return JsonResponse({
             'status': 'success',
-            'timestamp': datetime.now().isoformat(),
-            'sources': {}
-        }
-
-        # Dữ liệu từ ESP32
-        if esp32_response.status_code == 200:
-            esp32_data = esp32_response.json()
-            response_data['sources']['esp32'] = {
-                'temperature': round(float(esp32_data['temperature']), 2),
-                'humidity': round(float(esp32_data['humidity']), 2)
-            }
+            'temperature': temperature,
+            'humidity': humidity,
+            'timestamp': latest_feed['created_at']
+        })
         
-        # Dữ liệu từ ThingSpeak
-        if thingspeak_data and 'feeds' in thingspeak_data and thingspeak_data['feeds']:
-            latest_feed = thingspeak_data['feeds'][-1]
-            response_data['sources']['thingspeak'] = {
-                'temperature': round(float(latest_feed['field1']), 2) if 'field1' in latest_feed else None,
-                'humidity': round(float(latest_feed['field2']), 2) if 'field2' in latest_feed else None,
-                'timestamp': latest_feed['created_at']
-            }
-
-        return JsonResponse(response_data)
-        
-    except requests.RequestException as e:
+    except Exception as e:
+        logger.error(f"Error in get_temp_humidity: {str(e)}")
         return JsonResponse({
             'status': 'error',
-            'message': str(e)
+            'message': 'Internal server error'
         }, status=500)
 
 @csrf_exempt
