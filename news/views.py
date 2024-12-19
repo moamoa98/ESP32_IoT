@@ -11,6 +11,7 @@ ESP32_IP = '118.69.234.7'
 THINGSPEAK_API_KEY = '850L5YHIZ5AIC93F'
 THINGSPEAK_CHANNEL_ID = '2790754'  # Thay bằng channel ID của bạn
 THINGSPEAK_READ_API = 'https://api.thingspeak.com/channels/2790754/feeds.json'
+THINGSPEAK_BASE_URL = 'https://api.thingspeak.com'
 
 def get_thingspeak_data(field=None, results=1):
     """
