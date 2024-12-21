@@ -3,6 +3,8 @@ from django.shortcuts import render
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import requests
+from urllib.request import urlopen
+import urllib.parse
 from datetime import datetime
 import json
 import logging
@@ -99,81 +101,66 @@ def get_temp_humidity(request):
             'message': 'Internal server error'
         }, status=500)
 
-@csrf_exempt
-def get_historical_data(request):
-    """Lấy dữ liệu lịch sử từ ThingSpeak"""
-    try:
-        # Số lượng điểm dữ liệu muốn lấy (mặc định 24 giờ - 96 điểm với interval 15 phút)
-        results = request.GET.get('results', '96')
-        
-        thingspeak_data = get_thingspeak_data(results=results)
-        
-        if thingspeak_data and 'feeds' in thingspeak_data:
-            historical_data = []
-            for feed in thingspeak_data['feeds']:
-                historical_data.append({
-                    'timestamp': feed['created_at'],
-                    'temperature': round(float(feed['field1']), 2) if 'field1' in feed else None,
-                    'humidity': round(float(feed['field2']), 2) if 'field2' in feed else None
-                })
-            
-            return JsonResponse({
-                'status': 'success',
-                'data': historical_data
-            })
-        
-        return JsonResponse({
-            'status': 'error',
-            'message': 'No data available'
-        }, status=404)
-        
-    except Exception as e:
-        return JsonResponse({
-            'status': 'error',
-            'message': str(e)
-        }, status=500)
-
-@csrf_exempt
+@csrf_exempt 
 def led_control(request):
-    """Điều khiển thiết bị và lưu trạng thái vào ThingSpeak"""
     if request.method == 'POST':
-        action = request.POST.get('action')
-        device = request.POST.get('device')
-        
         try:
-            # Gửi lệnh đến ESP32
-            url = f'http://{ESP32_IP}/led/{action}'
-            response = requests.get(url, params={'device': device})
-            
-            if response.status_code == 200:
-                # Cập nhật trạng thái lên ThingSpeak (Field 3 cho device status)
-                device_status = 1 if action == 'on' else 0
-                thingspeak_update_url = f'{THINGSPEAK_BASE_URL}/update'
-                requests.get(thingspeak_update_url, params={
-                    'api_key': THINGSPEAK_API_KEY,
-                    'field3': f"{device}:{device_status}"
-                })
-                
-                return JsonResponse({
-                    'status': 'success',
-                    'message': f'Device {device} turned {action}'
-                })
-            else:
+            data = json.loads(request.body.decode('utf-8'))
+            action = data.get('action')  # 'on' hoặc 'off'
+            device = data.get('device')  # Tên thiết bị
+
+            logger.info(f"Received action: {action} for device: {device}")
+
+            # Chuyển đổi action thành giá trị số
+            value = 1 if action == 'on' else 0
+            device_encoded=urllib.parse.quote(device)
+            # Xây dựng URL với các tham số cần thiết
+            url = f'{THINGSPEAK_BASE_URL}/update?api_key={THINGSPEAK_API_KEY}&field3={value}&field4={device}'
+
+            # Gửi request đến ThingSpeak bằng urlopen
+            try:
+                with urlopen(url, timeout=30) as response:
+                    result = response.read().decode('utf-8')  # Đọc và giải mã phản hồi
+                    logger.info(f"ThingSpeak response: {result}")
+
+                    if result.strip():  # Đảm bảo phản hồi không rỗng
+                        return JsonResponse({
+                            'status': 'success',
+                            'message': f'Device {device} turned {action}',
+                            'response': result
+                        })
+                    else:
+                        logger.warning("ThingSpeak returned an empty response")
+                        return JsonResponse({
+                            'status': 'error',
+                            'message': 'ThingSpeak returned an empty response'
+                        }, status=500)
+            except Exception as e:
+                logger.error(f"Error sending request to ThingSpeak: {str(e)}")
                 return JsonResponse({
                     'status': 'error',
-                    'message': 'Failed to control device'
-                }, status=400)
-                
-        except requests.RequestException as e:
+                    'message': f'Failed to update ThingSpeak: {str(e)}'
+                }, status=500)
+
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON decode error: {str(e)}")
+            return JsonResponse({
+                'status': 'error', 
+                'message': 'Invalid JSON data'
+            }, status=400)
+
+        except Exception as e:
+            logger.error(f"Unexpected error: {str(e)}")
             return JsonResponse({
                 'status': 'error',
-                'message': str(e)
+                'message': 'Internal server error'
             }, status=500)
-    
+
     return JsonResponse({
         'status': 'error',
         'message': 'Only POST requests are allowed'
     }, status=405)
+
 
 def index(request):
     return render(request, 'index.html')

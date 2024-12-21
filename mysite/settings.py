@@ -128,7 +128,7 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 STATIC_ROOT=os.path.join(BASE_DIR, "staticfiles")
-STATIC_DIRS = [os.path.join(BASE_DIR, "mysite\static")]
+STATICFILES_DIRS = [os.path.join(BASE_DIR, "static")]
 
 THINGSPEAK_API_KEY = '850L5YHIZ5AIC93F'
 THINGSPEAK_CHANNEL_ID = '2790754' 
