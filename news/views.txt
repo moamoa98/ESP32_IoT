@@ -1,0 +1,272 @@
+# views.py
+from django.shortcuts import render
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+import requests
+from urllib.request import urlopen
+import urllib.parse
+from datetime import datetime
+import json
+import logging,time
+logger = logging.getLogger(__name__)
+
+# ESP32 và ThingSpeak configuration
+THINGSPEAK_API_KEY = '850L5YHIZ5AIC93F'
+THINGSPEAK_CHANNEL_ID = '2790754'  # Thay bằng channel ID của bạn
+THINGSPEAK_READ_API = 'https://api.thingspeak.com/channels/2790754/feeds.json'
+THINGSPEAK_BASE_URL = 'https://api.thingspeak.com'
+
+logger = logging.getLogger(__name__)
+
+# ESP32 và ThingSpeak configuration
+from django.conf import settings
+
+# THINGSPEAK_MONITOR_CHANNEL = settings.THINGSPEAK_MONITOR_CHANNEL
+THINGSPEAK_CONTROL_CHANNEL = settings.THINGSPEAK_CONTROL_CHANNEL
+
+# ThingSpeak configuration
+THINGSPEAK_MONITOR_CHANNEL = {
+    'CHANNEL_ID': '2790754',
+    'API_KEY_READ': 'GE5YOKLZL7BQ3CO9'
+}
+
+# Cache để lưu giá trị cuối cùng
+LAST_VALID_DATA = {
+    'temperature': None,
+    'humidity': None,
+    'temp_timestamp': None,
+    'humidity_timestamp': None
+}
+
+def is_data_fresh(timestamp, max_age_minutes=5):
+    """Kiểm tra xem dữ liệu có còn mới không"""
+    if timestamp is None:
+        return False
+    age = datetime.now() - timestamp
+    return age < timedelta(minutes=max_age_minutes)
+
+@csrf_exempt
+def get_thingspeak_data(channel, field=None, results=2):  # Tăng results lên 2 để có nhiều dữ liệu hơn
+    """Lấy dữ liệu từ ThingSpeak với nhiều bản ghi hơn"""
+    try:
+        params = {
+            'api_key': channel['API_KEY_READ'],
+            'results': results  # Lấy 2 bản ghi gần nhất
+        }
+        if field:
+            params['field'] = field
+            
+        url = f"https://api.thingspeak.com/channels/{channel['CHANNEL_ID']}/feeds.json"
+        logger.info(f"Making request to URL: {url}")
+        
+        response = requests.get(url, params=params, timeout=10)
+        logger.info(f"ThingSpeak Response Status: {response.status_code}")
+        
+        response.raise_for_status()
+        data = response.json()
+        
+        if not data.get('feeds'):
+            logger.warning("No feeds found in ThingSpeak response")
+            return None
+            
+        logger.info(f"Successfully retrieved {len(data['feeds'])} records from ThingSpeak")
+        return data
+        
+    except Exception as e:
+        logger.error(f"Error getting ThingSpeak data: {str(e)}")
+        return None
+
+@csrf_exempt
+def get_temp_humidity(request):
+    """Lấy dữ liệu nhiệt độ và độ ẩm với cache"""
+    try:
+        monitor_data = get_thingspeak_data(THINGSPEAK_MONITOR_CHANNEL, results=2)
+        
+        if not monitor_data or not monitor_data.get('feeds'):
+            logger.error("No data returned from ThingSpeak")
+            # Trả về giá trị cached nếu còn mới
+            if (LAST_VALID_DATA['temperature'] is not None and 
+                LAST_VALID_DATA['humidity'] is not None and
+                is_data_fresh(LAST_VALID_DATA['temp_timestamp']) and
+                is_data_fresh(LAST_VALID_DATA['humidity_timestamp'])):
+                return JsonResponse({
+                    'status': 'success',
+                    'temperature': LAST_VALID_DATA['temperature'],
+                    'humidity': LAST_VALID_DATA['humidity'],
+                    'note': 'Using cached data'
+                })
+            return JsonResponse({
+                'status': 'error',
+                'message': 'No data available and no valid cached data'
+            }, status=404)
+
+        # Lấy 2 bản ghi gần nhất
+        feeds = monitor_data['feeds']
+        temperature = None
+        humidity = None
+        
+        # Tìm giá trị hợp lệ gần nhất cho cả nhiệt độ và độ ẩm
+        for feed in feeds:
+            # Kiểm tra nhiệt độ
+            if temperature is None and feed.get('field1'):
+                try:
+                    temperature = float(feed['field1'])
+                    LAST_VALID_DATA['temperature'] = temperature
+                    LAST_VALID_DATA['temp_timestamp'] = datetime.now()
+                except (ValueError, TypeError):
+                    pass
+
+            # Kiểm tra độ ẩm
+            if humidity is None and feed.get('field2'):
+                try:
+                    humidity = float(feed['field2'])
+                    LAST_VALID_DATA['humidity'] = humidity
+                    LAST_VALID_DATA['humidity_timestamp'] = datetime.now()
+                except (ValueError, TypeError):
+                    pass
+
+            # Nếu đã có cả hai giá trị, dừng vòng lặp
+            if temperature is not None and humidity is not None:
+                break
+
+        # Sử dụng giá trị cached nếu thiếu giá trị mới
+        if temperature is None and is_data_fresh(LAST_VALID_DATA['temp_timestamp']):
+            temperature = LAST_VALID_DATA['temperature']
+            
+        if humidity is None and is_data_fresh(LAST_VALID_DATA['humidity_timestamp']):
+            humidity = LAST_VALID_DATA['humidity']
+
+        # Kiểm tra cuối cùng
+        if temperature is None or humidity is None:
+            logger.warning(f"Incomplete data - Temp: {temperature}, Humidity: {humidity}")
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Incomplete data from ThingSpeak and no valid cached data',
+                'available_temperature': temperature,
+                'available_humidity': humidity
+            }, status=404)
+
+        logger.info(f"Returning data - Temp: {temperature}°C, Humidity: {humidity}%")
+        
+        return JsonResponse({
+            'status': 'success',
+            'temperature': round(float(temperature), 2),
+            'humidity': round(float(humidity), 2),
+            'timestamp': feeds[0].get('created_at')
+        })
+
+    except Exception as e:
+        logger.error(f"Error in get_temp_humidity: {str(e)}")
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Internal server error: {str(e)}'
+        }, status=500)
+# views.py
+@csrf_exempt
+def led_control(request):
+    """
+    Handle device control through ThingSpeak using configured channels
+    """
+    try:
+        data = json.loads(request.body)
+        device = data.get('device')
+        action = data.get('action')
+        
+        if not device or not action:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Missing device or action parameter'
+            }, status=400)
+
+        # Device to field mapping
+        DEVICE_TO_FIELD_MAP = {
+            'tog-light-lee': 1,
+            'tog-light-micheal': 2,
+            'tog-light-larry': 3,
+            'tog-light-jack': 4,
+            'tog-fan-micheal': 5,
+            'tog-fan-jack': 6,
+            'tog-gate': 7
+        }
+
+        # Get corresponding field number
+        field_number = DEVICE_TO_FIELD_MAP.get(device)
+        if field_number is None:
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Invalid device: {device}'
+            }, status=400)
+
+        # Convert action to binary value
+        value = 1 if action.lower() == 'on' else 0
+
+        try:
+            # Update ThingSpeak using control channel configuration
+            thingspeak_url = f'{THINGSPEAK_BASE_URL}/update'
+            params = {
+                'api_key': THINGSPEAK_CONTROL_CHANNEL['API_KEY_WRITE'],
+                f'field{field_number}': value
+            }
+            
+            response = requests.get(thingspeak_url, params=params, timeout=10)
+            response.raise_for_status()
+            
+            if response.status_code == 200:
+                # Read back the updated value to confirm
+                updated_data = get_thingspeak_data(
+                    THINGSPEAK_CONTROL_CHANNEL, 
+                    field=field_number, 
+                    results=1
+                )
+                
+                if updated_data and updated_data.get('feeds'):
+                    latest_value = updated_data['feeds'][-1].get(f'field{field_number}')
+                    if str(latest_value) == str(value):
+                        return JsonResponse({
+                            'status': 'success',
+                            'message': f'Device {device} successfully set to {action}',
+                            'field': field_number,
+                            'value': value
+                        })
+                
+                # If we couldn't confirm the update
+                return JsonResponse({
+                    'status': 'warning',
+                    'message': 'Update sent but could not confirm status',
+                    'field': field_number,
+                    'value': value
+                })
+            
+            return JsonResponse({
+                'status': 'error',
+                'message': f'ThingSpeak returned status code: {response.status_code}'
+            }, status=503)
+                
+        except requests.Timeout:
+            logger.error("ThingSpeak API timeout")
+            return JsonResponse({
+                'status': 'error',
+                'message': 'ThingSpeak API timeout'
+            }, status=504)
+            
+        except requests.RequestException as e:
+            logger.error(f"Error updating ThingSpeak: {str(e)}")
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Failed to update ThingSpeak'
+            }, status=503)
+            
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Invalid JSON in request body'
+        }, status=400)
+        
+    except Exception as e:
+        logger.error(f"Error in led_control: {str(e)}")
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Internal server error'
+        }, status=500)
+def index(request):
+    return render(request, 'index.html')

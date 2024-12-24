@@ -1,34 +1,64 @@
-// Cấu hình và hằng số
 const API_ENDPOINTS = {
-    LED_CONTROL: '/api/led_control/',
- 
+    TEMP_HUMIDITY: '/get_temp_humidity/',
+    DEVICE_STATE: '/update_device_state/',
 };
 
+const devices = [
+    'tog-light-lee',
+    'tog-light-micheal',
+    'tog-light-larry',
+    'tog-light-jack',
+    'tog-fan-micheal',
+    'tog-fan-jack',
+    'tog-gate'
+];
+
 // Hàm chính để điều khiển thiết bị
-async function controlHome(action, device) {
+// async function controlHome(action, device) {
+//     try {
+//         const response = await fetch(API_ENDPOINTS.LED_CONTROL, {
+//             method: 'POST',
+//             headers: {
+//                 'Content-Type': 'application/json',
+//             },
+//             body: JSON.stringify({ action, device })
+//         });
+
+//         if (!response.ok) {
+//             throw new Error(`HTTP error! status: ${response.status}`);
+//         }
+
+//         const data = await response.json();
+//         console.log('Success:', data);
+//         return data;
+
+//     } catch (error) {
+//         console.error('Error controlling device:', error);
+//         // Có thể thêm xử lý UI để hiển thị lỗi cho người dùng
+//         throw error;
+//     }
+// }
+async function updateDeviceState(action,deviceId) {
     try {
-        const response = await fetch(API_ENDPOINTS.LED_CONTROL, {
+        const response = await fetch(API_ENDPOINTS.DEVICE_STATE, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ action, device })
+            body: JSON.stringify({ device: deviceId, action }),
         });
 
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+        if (response.ok) {
+            const data = await response.json();
+            console.log(`Device ${deviceId} set to ${action}:`, data);
+        } else {
+            console.error('Failed to update device state:', response.status);
         }
-
-        const data = await response.json();
-        console.log('Success:', data);
-        return data;
-
     } catch (error) {
-        console.error('Error controlling device:', error);
-        // Có thể thêm xử lý UI để hiển thị lỗi cho người dùng
-        throw error;
+        console.error('Error:', error);
     }
 }
+
 
 // Hàm helper để thiết lập event listener cho các thiết bị
 function setupDeviceControl(deviceId) {
@@ -59,15 +89,7 @@ function setupDeviceControl(deviceId) {
 }
 
 // Danh sách các thiết bị cần điều khiển
-const devices = [
-    'tog-light-lee',
-    'tog-light-micheal',
-    'tog-light-larry',
-    'tog-light-jack',
-    'tog-fan-micheal',
-    'tog-fan-jack',
-    'tog-gate'
-];
+
 
 // Khởi tạo các controls khi DOM đã sẵn sàng
 document.addEventListener('DOMContentLoaded', function() {

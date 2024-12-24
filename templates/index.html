@@ -74,25 +74,50 @@
                             }
                         });
                         function updateTempHumidity(){
-                            fetch('get_temp_humidity/')
+                            fetch('/get_temp_humidity/')
                             .then(response => response.json())
                             .then(data => {
-                                console.log('Received data:', data);
-                                var newTemperatureVal = Math.floor(data.temperature);
-                                $('.js-gauge--1').kumaGauge('update', {
-                                    value: newTemperatureVal
-                                });
-                        
-                                var newHumidityVal = Math.round(data.humidity);
-                              
-                                $('.js-gauge--2').kumaGauge('update', {
-                                    value: newHumidityVal
-                                });
+                                if(data.status ==='success'){
+                                    console.log('Received data:', data);
+                                    var newTemperatureVal = Math.floor(data.temperature);
+                                    $('.js-gauge--1').kumaGauge('update', {
+                                        value: newTemperatureVal
+                                    });
+                            
+                                    var newHumidityVal = Math.round(data.humidity);
+                                  
+                                    $('.js-gauge--2').kumaGauge('update', {
+                                        value: newHumidityVal
+                                    });
+                                }
+                                else{
+                                     console.error('Failed to fetch temperature and humidity:', data);
+                                    }
+  
                        
                             })
                             .catch(error => {
                                 console.error('Error fetching temperature and humidity:', error);
                             });
+                        }
+
+                        function updateDeviceState(deviceId, action) {
+                            fetch('/update_device_state/', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({ device: deviceId, action })
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.status === 'success') {
+                                    console.log(`Device ${deviceId} set to ${action}`);
+                                } else {
+                                    console.error('Error updating device:', data.message);
+                                }
+                            })
+                            .catch(error => console.error('Error:', error));
                         }
                         updateTempHumidity();
                         setInterval(updateTempHumidity, 5000);

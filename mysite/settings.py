@@ -131,7 +131,21 @@ STATIC_ROOT=os.path.join(BASE_DIR, "staticfiles")
 STATICFILES_DIRS = [os.path.join(BASE_DIR, "static")]
 
 THINGSPEAK_API_KEY = '850L5YHIZ5AIC93F'
-THINGSPEAK_CHANNEL_ID = '2790754' 
+THINGSPEAK_CHANNEL_ID = '2790754'
+# Channel cho monitoring (nhiệt độ, độ ẩm)
+THINGSPEAK_MONITOR_CHANNEL = {
+    'CHANNEL_ID': '2790754',
+    'API_KEY_WRITE': '850L5YHIZ5AIC93F',
+    'API_KEY_READ': 'GE5YOKLZL7BQ3CO9'
+}
+
+# Channel cho điều khiển thiết bị
+THINGSPEAK_CONTROL_CHANNEL = {
+    'CHANNEL_ID': '2792814', # Channel mới cho control
+    'API_KEY_WRITE': '5P1LB779F96ORSZQ',
+    'API_KEY_READ': '4P1HWXGK5FWNRKTX'
+}
+
 # Logging configuration
 LOGGING = {
     'version': 1,

@@ -1,7 +1,7 @@
 // Cấu hình và hằng số
 const API_ENDPOINTS = {
     LED_CONTROL: '/api/led_control/',
-    TEMP_HUMIDITY: '/api/temp-humidity/'
+ 
 };
 
 // Hàm chính để điều khiển thiết bị
@@ -79,41 +79,41 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Test function để log request
-async function testControl() {
-    try {
-        const response = await fetch('/api/led_control/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                action: 'on',
-                device: 'test-device'
-            })
-        });
+// async function testControl() {
+//     try {
+//         const response = await fetch('/api/led_control/', {
+//             method: 'POST',
+//             headers: {
+//                 'Content-Type': 'application/json',
+//             },
+//             body: JSON.stringify({
+//                 action: 'on',
+//                 device: 'test-device'
+//             })
+//         });
         
-        console.log('Response status:', response.status);
-        const data = await response.json();
-        console.log('Response data:', data);
+//         console.log('Response status:', response.status);
+//         const data = await response.json();
+//         console.log('Response data:', data);
         
-    } catch (error) {
-        console.error('Error details:', {
-            name: error.name,
-            message: error.message,
-            stack: error.stack
-        });
-    }
-}
+//     } catch (error) {
+//         console.error('Error details:', {
+//             name: error.name,
+//             message: error.message,
+//             stack: error.stack
+//         });
+//     }
+// }
 
-// Basic event listener
-document.addEventListener('DOMContentLoaded', function() {
-    // Test với một nút đơn giản
-    const button = document.createElement('button');
-    button.textContent = 'Test LED Control';
-    button.onclick = testControl;
-    document.body.appendChild(button);
+// // Basic event listener
+// document.addEventListener('DOMContentLoaded', function() {
+//     // Test với một nút đơn giản
+//     const button = document.createElement('button');
+//     button.textContent = 'Test LED Control';
+//     button.onclick = testControl;
+//     document.body.appendChild(button);
     
-    console.log('Test system initialized');
-});
+//     console.log('Test system initialized');
+// });
 
-console.log('123')
+// console.log('123')
