@@ -2,7 +2,7 @@
 from django.urls import path
 from .views import index
 from django.urls import path
-from .views import update_device_state,update_sensor,get_sensor_data,check_number,check_esp32_status
+from .views import update_device_state,update_sensor,get_sensor_data,check_number,check_esp32_status,get_all_device_states
 
 
 
@@ -19,6 +19,7 @@ from .views import update_device_state,update_sensor,get_sensor_data,check_numbe
 urlpatterns = [
     path('update_sensor/',update_sensor,name='update_sensor'),
     path('check_esp32_status/', check_esp32_status, name='check_esp32_status'),
+    path('get_all_device_states/', get_all_device_states, name='get_all_device_states'),
     path('get_sensor_data/',get_sensor_data,name='get_sensor_data'),
     path('update_device_state/', update_device_state, name='update_device_state'),
     path('', index, name='index'),

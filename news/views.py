@@ -68,6 +68,10 @@ def update_device_state(request):
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
 
+@csrf_exempt
+def get_all_device_states(request):
+    return JsonResponse({'status': 'success', 'device_states': device_states})
+
 def index(request):
     return render(request, 'index.html')
 
