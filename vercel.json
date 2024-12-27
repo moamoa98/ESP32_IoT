@@ -1,5 +1,8 @@
 {
     "builds": [{
+        "env": {
+      "PYTHON_VERSION": "3.10"
+    },
         "src": "mysite/wsgi.py",
         "use": "@vercel/python",
         "config": { "maxLambdaSize": "15mb", "runtime": "python3.10" }
