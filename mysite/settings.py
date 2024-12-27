@@ -28,6 +28,8 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
+CORS_ALLOW_ALL_ORIGINS = True
+
 
 # Application definition
 
@@ -72,7 +74,15 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'mysite.wsgi.application'
+# WSGI_APPLICATION = 'mysite.wsgi.application'
+
+
+# Thay thế ASGI_APPLICATION thay vì WSGI_APPLICATION
+ASGI_APPLICATION = 'mysite.asgi.application'
+
+
+
+
 
 
 # Database
@@ -80,17 +90,19 @@ WSGI_APPLICATION = 'mysite.wsgi.application'
 
 DATABASES = {
     'default': {
-        # 'ENGINE': 'django.db.backends.mysql',
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-        # 'NAME': 'django_news',
-        # 'USER':'root',
-        # 'PASSWORD':'password',
-        # 'HOST':'127.0.0.1',
-        # 'PORT':'3306',
+        'ENGINE': 'django.db.backends.postgresql',
+        # 'ENGINE': 'django.db.backends.sqlite3',
+        # 'NAME': BASE_DIR / 'db.sqlite3',
+        'NAME': 'railway',
+        'USER':'postgres',
+        'PASSWORD':'gpEmgqzZYBowuvDqpvcPlNTAhagwEFvz',
+        'HOST':'junction.proxy.rlwy.net',
+        'PORT':'55524',
+      
     }
        
 }
+
 
 
 # Password validation

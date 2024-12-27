@@ -8,7 +8,9 @@ class SensorData(models.Model):
     humidity = models.FloatField()
     timestamp = models.DateTimeField(auto_now_add=True)
 
-SensorData.objects.create(temperature=25.5, humidity=60.0)
+    def __str__(self):
+        return f"Temp: {self.temperature}, Humidity: {self.humidity}, Time: {self.timestamp}"
+
 
 class DeviceState(models.Model):
     device_id = models.CharField(max_length=50, unique=True)

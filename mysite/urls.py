@@ -20,6 +20,7 @@ from django.urls import include, path
 urlpatterns = [
     path("", include("news.urls")), #kết nối app news
     path('admin/', admin.site.urls),
+    
 ]
 
 

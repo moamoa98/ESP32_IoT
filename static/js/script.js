@@ -1,141 +1,177 @@
-const API_ENDPOINTS = {
-    TEMP_HUMIDITY: '/get_temp_humidity/',
-    DEVICE_STATE: '/update_device_state/',
-};
 
-const devices = [
-    'tog-light-lee',
-    'tog-light-micheal',
-    'tog-light-larry',
-    'tog-light-jack',
-    'tog-fan-micheal',
-    'tog-fan-jack',
-    'tog-gate'
-];
 
-// Hàm chính để điều khiển thiết bị
-// async function controlHome(action, device) {
-//     try {
-//         const response = await fetch(API_ENDPOINTS.LED_CONTROL, {
-//             method: 'POST',
-//             headers: {
-//                 'Content-Type': 'application/json',
-//             },
-//             body: JSON.stringify({ action, device })
-//         });
+document.addEventListener("DOMContentLoaded", function () {
+    const devices = [
+        'tog-light-lee',
+        'tog-light-micheal',
+        'tog-light-larry',
+        'tog-light-jack',
+        'tog-fan-micheal',
+        'tog-fan-jack',
+        'tog-gate'
+    ];
 
-//         if (!response.ok) {
-//             throw new Error(`HTTP error! status: ${response.status}`);
-//         }
+    devices.forEach((deviceId) => {
+        const toggleButton = document.getElementById(deviceId);
 
-//         const data = await response.json();
-//         console.log('Success:', data);
-//         return data;
+        if (toggleButton) {
+            toggleButton.addEventListener("click", function () {
+                // Sử dụng setTimeout để đảm bảo trạng thái đã được cập nhật
+                setTimeout(() => {
+                    const isPressed = toggleButton.getAttribute("aria-pressed") === "true";
+                    console.log(`Trạng thái nút ${deviceId}:`, isPressed ? "Bật" : "Tắt");
+                    const action=isPressed ? "on" : "off";
 
-//     } catch (error) {
-//         console.error('Error controlling device:', error);
-//         // Có thể thêm xử lý UI để hiển thị lỗi cho người dùng
-//         throw error;
-//     }
-// }
-async function updateDeviceState(action,deviceId) {
-    try {
-        const response = await fetch(API_ENDPOINTS.DEVICE_STATE, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ device: deviceId, action }),
-        });
+                    fetch('/update_device_state/',{
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            device: deviceId,
+                            action: action
+                            
+                        })
+                        
+                    })                        
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.status === 'success') {
+                                console.log(`Thiết bị ${deviceId} đã được đặt thành ${action}`);
+                            } else {
+                                console.error('Lỗi khi gửi trạng thái:', data.message);
+                            }
+                        })
+                        .catch(error => console.error('Lỗi kết nối:', error));
 
-        if (response.ok) {
-            const data = await response.json();
-            console.log(`Device ${deviceId} set to ${action}:`, data);
+
+
+                }, 0);
+            });
         } else {
-            console.error('Failed to update device state:', response.status);
-        }
-    } catch (error) {
-        console.error('Error:', error);
-    }
-}
-
-
-// Hàm helper để thiết lập event listener cho các thiết bị
-function setupDeviceControl(deviceId) {
-    const element = document.getElementById(deviceId);
-    if (!element) {
-        console.warn(`Element with id ${deviceId} not found`);
-        return;
-    }
-
-    element.addEventListener('change', async function() {
-        try {
-            const action = this.checked ? 'on' : 'off';
-            console.log(`${deviceId} state: ${action.toUpperCase()}`);
-            
-            const result = await controlHome(action, deviceId);
-            console.log('Control result:', result);
-
-            // Có thể thêm phản hồi trực quan cho người dùng
-            if (result.status === 'success') {
-                // Thêm phản hồi thành công (có thể là toast notification)
-            }
-        } catch (error) {
-            console.error(`Failed to control ${deviceId}:`, error);
-            // Hiển thị lỗi cho người dùng
-            this.checked = !this.checked; // Revert trạng thái switch
+            console.error(`Không tìm thấy nút #${deviceId}`);
         }
     });
-}
-
-// Danh sách các thiết bị cần điều khiển
-
-
-// Khởi tạo các controls khi DOM đã sẵn sàng
-document.addEventListener('DOMContentLoaded', function() {
-    // Thiết lập điều khiển cho tất cả các thiết bị
-    devices.forEach(deviceId => setupDeviceControl(deviceId));
-    
-    // Có thể thêm code khởi tạo khác ở đây
-    console.log('Smart home control system initialized');
 });
 
-// Test function để log request
-// async function testControl() {
+document.addEventListener('DOMContentLoaded', function(e) {
+
+    function updateStatus() {
+        const statusDiv = document.getElementById('status');
+        const statusText = document.getElementById('status-text');
+        const deviceStatus = document.getElementById('device-status');
+
+        if (navigator.onLine) {
+            statusDiv.className = 'status border border-success online';
+            statusText.textContent = 'Online';
+            deviceStatus.textContent = 'ESP32 đang hoạt động';
+        } else {
+            statusDiv.className = 'status border border-danger offline';
+            statusText.textContent = 'Offline';
+            deviceStatus.textContent = 'ESP32 đang offline';
+        }
+    }
+
+    // Update status on load
+    window.addEventListener('load', updateStatus);
+
+    // Update status when online/offline events are triggered
+    window.addEventListener('online', updateStatus);
+    window.addEventListener('offline', updateStatus);
+
+});
+
+
+function checkCSSFiles() {
+    // Lấy tất cả các thẻ link trong document
+    const links = document.getElementsByTagName('link');
+    
+    // Mảng chứa các file CSS
+    const cssFiles = [];
+    
+    // Kiểm tra từng thẻ link
+    for(let link of links) {
+        // Kiểm tra rel="stylesheet"
+        if(link.rel === 'stylesheet' && link.href) {
+            cssFiles.push(link.href);
+        }
+    }
+    
+    // Kiểm tra cả style tag
+    const styles = document.getElementsByTagName('style');
+    
+    // Kết quả
+    if(cssFiles.length > 0 || styles.length > 0) {
+        console.log('Website có sử dụng CSS');
+        console.log('Số file CSS:', cssFiles.length);
+        console.log('Số internal style tags:', styles.length);
+        console.log('Danh sách file CSS:', cssFiles);
+    } else {
+        console.log('Website không sử dụng CSS');
+    }
+}
+
+// Gọi hàm kiểm tra
+checkCSSFiles();
+
+
+
+// async function updateDeviceState(action,deviceId) {
 //     try {
-//         const response = await fetch('/api/led_control/', {
+//         const response = await fetch(API_ENDPOINTS.DEVICE_STATE, {
 //             method: 'POST',
 //             headers: {
 //                 'Content-Type': 'application/json',
 //             },
-//             body: JSON.stringify({
-//                 action: 'on',
-//                 device: 'test-device'
-//             })
+//             body: JSON.stringify({ device: deviceId, action }),
 //         });
-        
-//         console.log('Response status:', response.status);
-//         const data = await response.json();
-//         console.log('Response data:', data);
-        
+
+//         if (response.ok) {
+//             const data = await response.json();
+//             console.log(`Device ${deviceId} set to ${action}:`, data);
+//         } else {
+//             console.error('Failed to update device state:', response.status);
+//         }
 //     } catch (error) {
-//         console.error('Error details:', {
-//             name: error.name,
-//             message: error.message,
-//             stack: error.stack
-//         });
+//         console.error('Error:', error);
 //     }
 // }
 
-// // Basic event listener
+// // Hàm helper để thiết lập event listener cho các thiết bị
+// function setupDeviceControl(deviceId) {
+//     const element = document.getElementById(deviceId);
+//     if (!element) {
+//         console.warn(`Element with id ${deviceId} not found`);
+//         return;
+//     }
+
+//     element.addEventListener('change', async function() {
+//         try {
+//             const action = this.checked ? 'on' : 'off';
+//             console.log(`${deviceId} state: ${action.toUpperCase()}`);
+            
+//             // const result = await controlHome(action, deviceId);
+//             console.log('Control result:', result);
+
+//             // Có thể thêm phản hồi trực quan cho người dùng
+//             if (result.status === 'success') {
+//                 // Thêm phản hồi thành công (có thể là toast notification)
+//             }
+//         } catch (error) {
+//             console.error(`Failed to control ${deviceId}:`, error);
+//             // Hiển thị lỗi cho người dùng
+//             this.checked = !this.checked; // Revert trạng thái switch
+//         }
+//     });
+// }
+
+// // Danh sách các thiết bị cần điều khiển
+
+
+// // Khởi tạo các controls khi DOM đã sẵn sàng
 // document.addEventListener('DOMContentLoaded', function() {
-//     // Test với một nút đơn giản
-//     const button = document.createElement('button');
-//     button.textContent = 'Test LED Control';
-//     button.onclick = testControl;
-//     document.body.appendChild(button);
+//     // Thiết lập điều khiển cho tất cả các thiết bị
+//     devices.forEach(deviceId => setupDeviceControl(deviceId));
     
-//     console.log('Test system initialized');
+//     // Có thể thêm code khởi tạo khác ở đây
+//     console.log('Smart home control system initialized');
 // });
 
-// console.log('123')
