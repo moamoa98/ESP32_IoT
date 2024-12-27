@@ -52,31 +52,36 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 });
 
-document.addEventListener('DOMContentLoaded', function(e) {
+document.addEventListener('DOMContentLoaded', function() {
+    const statusDiv = document.getElementById('status');
+    const statusText = document.getElementById('status-text');
+    const deviceStatus = document.getElementById('device-status');
 
-    function updateStatus() {
-        const statusDiv = document.getElementById('status');
-        const statusText = document.getElementById('status-text');
-        const deviceStatus = document.getElementById('device-status');
-
-        if (navigator.onLine) {
-            statusDiv.className = 'status border border-success online';
-            statusText.textContent = 'Online';
-            deviceStatus.textContent = 'ESP32 đang hoạt động';
-        } else {
-            statusDiv.className = 'status border border-danger offline';
-            statusText.textContent = 'Offline';
-            deviceStatus.textContent = 'ESP32 đang offline';
-        }
+    function updateESP32Status() {
+        fetch('/check_esp32_status/')
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'online') {
+                    statusDiv.className = 'status border border-success online';
+                    statusText.textContent = 'Online';
+                    deviceStatus.textContent = 'ESP32 đang hoạt động';
+                } else {
+                    statusDiv.className = 'status border border-danger offline';
+                    statusText.textContent = 'Offline';
+                    deviceStatus.textContent = 'ESP32 đang offline';
+                }
+            })
+            .catch(error => {
+                console.error('Error checking ESP32 status:', error);
+                statusDiv.className = 'status border border-danger offline';
+                statusText.textContent = 'Offline';
+                deviceStatus.textContent = 'Không thể kết nối với ESP32';
+            });
     }
 
-    // Update status on load
-    window.addEventListener('load', updateStatus);
-
-    // Update status when online/offline events are triggered
-    window.addEventListener('online', updateStatus);
-    window.addEventListener('offline', updateStatus);
-
+    // Kiểm tra trạng thái mỗi 5 giây
+    updateESP32Status();
+    setInterval(updateESP32Status, 5000);
 });
 
 

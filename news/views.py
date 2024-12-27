@@ -3,17 +3,34 @@ from django.http import JsonResponse,HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from .models import SensorData, DeviceState
 import json
-
+from datetime import datetime, timedelta
+# Biến global để lưu thời gian cập nhật cuối cùng
+last_update_time = None
 # Lưu giá trị trong memory
 latest_sensor_data = {
     'temperature': 0,
     'humidity': 0
 }
+
+@csrf_exempt
+def check_esp32_status(request):
+    global last_update_time
+    
+    if last_update_time is None:
+        return JsonResponse({'status': 'offline'})
+        
+    # Kiểm tra xem lần cập nhật cuối cùng có trong vòng 10 giây không
+    time_difference = datetime.now() - last_update_time
+    if time_difference <= timedelta(seconds=10):
+        return JsonResponse({'status': 'online'})
+    return JsonResponse({'status': 'offline'})
 @csrf_exempt
 def update_sensor(request):
+    global last_update_time
     if request.method == 'GET':
         return JsonResponse(latest_sensor_data)  # Trả về dữ liệu hiện tại nếu là GET
     elif request.method == 'POST':
+        last_update_time = datetime.now()  # Cập nhật thời gian
         latest_sensor_data['temperature'] = float(request.POST.get('temperature', 0))
         latest_sensor_data['humidity'] = float(request.POST.get('humidity', 0))
         return JsonResponse({'status': 'ok'})
