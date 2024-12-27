@@ -74,11 +74,11 @@ TEMPLATES = [
     },
 ]
 
-# WSGI_APPLICATION = 'mysite.wsgi.application'
+WSGI_APPLICATION = 'mysite.wsgi.application'
 
 
 # Thay thế ASGI_APPLICATION thay vì WSGI_APPLICATION
-ASGI_APPLICATION = 'mysite.asgi.application'
+# ASGI_APPLICATION = 'mysite.asgi.application'
 
 
 
